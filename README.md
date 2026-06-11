@@ -32,7 +32,7 @@ const { perAsset } = await wallet.getBalance(); // decrypted locally
 
 | Network | Chain ID | RPC |
 |---|---|---|
-| Testnet | 131071 (0x1ffff) | see [network info](https://docs.mersennet.com/getting-started/network-info) |
+| Testnet | 131071 (0x1ffff) | `https://rpc.mersennet.com` |
 | Mainnet | 8191 (0x1fff) | at launch |
 
 ## Development
