@@ -1,6 +1,6 @@
 /**
  * MersennetOrders - High-level API for Mersennet order book operations.
- * Uses mersennetorders_* RPC methods and the CLOB precompile for view calls.
+ * Uses mersennet_orders_* RPC methods and the CLOB precompile for view calls.
  */
 
 import { MersennetPrecompile, encodeWithdrawCollateral } from './precompile';
@@ -92,7 +92,7 @@ export class MersennetOrders {
     tickSize: string,
     lotSize: string
   ): Promise<{ marketId: number }> {
-    const result = (await this.provider.request('mersennetorders_addMarket', [
+    const result = (await this.provider.request('mersennet_orders_addMarket', [
       symbol,
       toHexAmount(tickSize),
       toHexAmount(lotSize),
@@ -110,7 +110,7 @@ export class MersennetOrders {
     size: string,
     tif: 'gtc' | 'ioc' | 'fok' = 'gtc'
   ): Promise<OrderOutcome> {
-    const result = (await this.provider.request('mersennetorders_submitOrder', [
+    const result = (await this.provider.request('mersennet_orders_submitOrder', [
       {
         owner,
         market_id: marketId,
@@ -125,7 +125,7 @@ export class MersennetOrders {
 
   /** Cancel an order by ID. */
   async cancelOrder(orderId: number): Promise<boolean> {
-    const result = (await this.provider.request('mersennetorders_cancelOrder', [
+    const result = (await this.provider.request('mersennet_orders_cancelOrder', [
       '0x' + orderId.toString(16),
     ])) as boolean;
     return result;
@@ -133,7 +133,7 @@ export class MersennetOrders {
 
   /** Get order book for a market. */
   async getOrderBook(marketId: number): Promise<OrderBook> {
-    const result = (await this.provider.request('mersennetorders_getOrderBook', [
+    const result = (await this.provider.request('mersennet_orders_getOrderBook', [
       '0x' + marketId.toString(16),
     ])) as unknown;
     if (result == null) return { bids: [], asks: [] };
@@ -142,7 +142,7 @@ export class MersennetOrders {
 
   /** Get open orders for an owner. */
   async getOpenOrders(owner: string): Promise<Order[]> {
-    const result = (await this.provider.request('mersennetorders_getOpenOrders', [
+    const result = (await this.provider.request('mersennet_orders_getOpenOrders', [
       owner,
     ])) as unknown;
     return parseOrders(result);
@@ -150,7 +150,7 @@ export class MersennetOrders {
 
   /** Deposit collateral (RPC). */
   async depositCollateral(owner: string, amount: string): Promise<boolean> {
-    const result = (await this.provider.request('mersennetorders_depositCollateral', [
+    const result = (await this.provider.request('mersennet_orders_depositCollateral', [
       owner,
       toHexAmount(amount),
     ])) as boolean;
@@ -220,7 +220,7 @@ export class MersennetOrders {
 
   /** Check if account is liquidatable (RPC). */
   async isLiquidatable(owner: string): Promise<boolean> {
-    const result = (await this.provider.request('mersennetorders_isLiquidatable', [
+    const result = (await this.provider.request('mersennet_orders_isLiquidatable', [
       owner,
     ])) as boolean;
     return result;

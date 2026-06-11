@@ -3,8 +3,8 @@
 `@mersennet/sdk` — the official TypeScript client for
 [Mersennet](https://mersennet.com), the private, verifiable network.
 
-- **JSON-RPC provider** — `eth_*` plus the `prime_*` shielded namespace
-- **PrimeOrders client** — place/cancel orders on the native on-chain order book
+- **JSON-RPC provider** — `eth_*` plus the `mersennet_*` shielded namespace
+- **MersennetOrders client** — place/cancel orders on the native on-chain order book
 - **ShieldedClient** — viewing keys, owner-side note scanning, client-side
   balance/position reconstruction, in-browser Noir proving (pluggable backend)
 - **WebSocket subscriptions** — blocks, orders, fills
@@ -18,9 +18,9 @@ npm install @mersennet/sdk
 ## Quick start
 
 ```ts
-import { PrimeProvider, ShieldedClient, ViewingKeyHelpers } from '@mersennet/sdk';
+import { MersennetProvider, ShieldedClient, ViewingKeyHelpers } from '@mersennet/sdk';
 
-const provider = new PrimeProvider('https://rpc.mersennet.com');
+const provider = new MersennetProvider('https://rpc.mersennet.com');
 const vk = ViewingKeyHelpers.fromSeed('my recovery phrase');
 const wallet = new ShieldedClient({ provider, viewingKey: vk });
 

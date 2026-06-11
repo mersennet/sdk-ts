@@ -2,7 +2,7 @@
  * @mersennet/sdk - TypeScript SDK for Mersennet
  *
  * Mersennet is a Layer 1 blockchain with JSON-RPC API and WebSocket subscriptions.
- * This SDK provides a typed interface for eth_*, mersennet_*, and mersennetorders_* methods.
+ * This SDK provides a typed interface for eth_*, mersennet_*, and mersennet_orders_* methods.
  *
  * @example
  * ```ts
