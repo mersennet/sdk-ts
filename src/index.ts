@@ -119,6 +119,21 @@ export type {
   ReconstructTradingOptions,
 } from './positions';
 
+// Compliance / view-key attestation (selective disclosure, ADR-019).
+export {
+  buildPortfolioAttestation,
+  verifyAttestation,
+  computePortfolioDigest,
+  ATTESTATION_VERSION,
+} from './attestation';
+export type {
+  ComplianceAttestation,
+  BuildAttestationOptions,
+  AttestationSigner,
+  AttestationVerifier,
+  VerifyResult,
+} from './attestation';
+
 // Privacy-fork migration UX helpers (Workstream F4).
 export {
   deriveMigrationNote,
