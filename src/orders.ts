@@ -3,21 +3,46 @@
  * Uses mersennet_orders_* RPC methods and the CLOB precompile for view calls.
  */
 
-import { MersennetPrecompile, encodeWithdrawCollateral } from './precompile';
+import {
+  MersennetPrecompile,
+  encodeWithdrawCollateral,
+  encodePlaceOrder,
+  encodeCancelOrder,
+  encodeDepositCollateral,
+} from './precompile';
 import type { MersennetProvider } from './provider';
 import type {
   BatchOrderParams,
   Order,
   OrderBook,
-  OrderOutcome,
   Position,
 } from './types';
 
-/** Normalize hex string for amounts */
-function toHexAmount(s: string): string {
-  if (s.startsWith('0x')) return s;
-  const n = BigInt(s);
-  return '0x' + n.toString(16);
+/**
+ * A transaction request the caller must sign. Field units match a standard
+ * legacy Ethereum transaction; `to` is the CLOB precompile.
+ */
+export interface TxRequest {
+  to: string;
+  data: string;
+  nonce: number;
+  gasLimit: number;
+  gasPrice: string; // hex wei
+  chainId: number;
+  value: string; // hex wei, always '0x0' for the precompile (non-payable)
+}
+
+/**
+ * Signs a {@link TxRequest} and returns the raw signed transaction hex
+ * (0x-prefixed). Plug in ethers/viem or any secp256k1 signer. The SDK stays
+ * dependency-free by delegating signing to the caller.
+ */
+export type TxSigner = (tx: TxRequest) => Promise<string>;
+
+/** Result of a signed order/collateral submission. */
+export interface SubmitResult {
+  accepted: boolean;
+  txHash: string;
 }
 
 /** Parse RPC response to Order[] */
@@ -55,29 +80,15 @@ function parseOrderBook(raw: unknown): OrderBook {
   return { bids, asks };
 }
 
-/** Parse OrderOutcome from RPC */
-function parseOrderOutcome(raw: unknown): OrderOutcome {
-  const obj = raw as Record<string, unknown>;
-  const trades = (Array.isArray(obj?.trades) ? obj.trades : []).map(
-    (t: Record<string, unknown>) => ({
-      taker: String(t.taker ?? ''),
-      maker: String(t.maker ?? ''),
-      market_id: String(t.market_id ?? '0x0'),
-      side: (t.side === 'sell' ? 'sell' : 'buy') as 'buy' | 'sell',
-      price: String(t.price ?? '0x0'),
-      size: String(t.size ?? '0x0'),
-    })
-  );
-  return {
-    order_id: obj.order_id != null ? String(obj.order_id) : null,
-    filled: String(obj.filled ?? '0x0'),
-    remaining: String(obj.remaining ?? '0x0'),
-    trades,
-  };
-}
+const TIF_CODE: Record<'gtc' | 'ioc' | 'fok', number> = { gtc: 0, ioc: 1, fok: 2 };
 
 /**
  * Mersennet Orders API.
+ *
+ * Orders, cancels and collateral moves are signed transactions to the CLOB
+ * precompile — the node executes them with `caller = the tx signer`, so there
+ * is no way to act for another account. Pass a {@link TxSigner} (e.g. wrapping
+ * ethers/viem) to the mutating methods.
  */
 export class MersennetOrders {
   private provider: MersennetProvider;
@@ -86,49 +97,68 @@ export class MersennetOrders {
     this.provider = provider;
   }
 
-  /** Add a new market (admin). Returns market ID. */
-  async addMarket(
-    symbol: string,
-    tickSize: string,
-    lotSize: string
-  ): Promise<{ marketId: number }> {
-    const result = (await this.provider.request('mersennet_orders_addMarket', [
-      symbol,
-      toHexAmount(tickSize),
-      toHexAmount(lotSize),
-    ])) as string;
-    const marketId = parseInt(result, 16);
-    return { marketId };
+  /** Build, sign and submit a precompile transaction; return {accepted, txHash}. */
+  private async signAndSend(
+    owner: string,
+    data: string,
+    gasLimit: number,
+    signer: TxSigner
+  ): Promise<SubmitResult> {
+    const [nonce, gasPrice, chainId] = await Promise.all([
+      this.provider.getTransactionCount(owner, 'pending'),
+      this.provider.getGasPrice(),
+      this.provider.getChainId(),
+    ]);
+    const raw = await signer({
+      to: MersennetPrecompile.ADDRESS,
+      data,
+      nonce,
+      gasLimit,
+      gasPrice: '0x' + BigInt(gasPrice).toString(16),
+      chainId,
+      value: '0x0',
+    });
+    const txHash = await this.provider.sendRawTransaction(raw);
+    return { accepted: true, txHash };
   }
 
-  /** Submit a single order. */
+  /**
+   * Submit a single order as a signed transaction to the CLOB precompile.
+   * `owner` must be the signer's address. Returns the tx hash; fills settle in
+   * the block and are observable via the order book / trade events.
+   */
   async submitOrder(
     owner: string,
     marketId: number,
     side: 'buy' | 'sell',
     price: string,
     size: string,
-    tif: 'gtc' | 'ioc' | 'fok' = 'gtc'
-  ): Promise<OrderOutcome> {
-    const result = (await this.provider.request('mersennet_orders_submitOrder', [
-      {
-        owner,
-        market_id: marketId,
-        side,
-        price: toHexAmount(price),
-        size: toHexAmount(size),
-        tif,
-      },
-    ])) as unknown;
-    return parseOrderOutcome(result);
+    tif: 'gtc' | 'ioc' | 'fok' = 'gtc',
+    signer?: TxSigner
+  ): Promise<SubmitResult> {
+    if (!signer) {
+      throw new Error(
+        'submitOrder now requires a signer: orders are signed txs to the CLOB precompile (the unsigned owner-field RPC was removed for security)'
+      );
+    }
+    const data = encodePlaceOrder(
+      marketId,
+      side === 'buy',
+      BigInt(price.startsWith('0x') ? price : BigInt(price).toString()),
+      BigInt(size.startsWith('0x') ? size : BigInt(size).toString()),
+      TIF_CODE[tif]
+    );
+    return this.signAndSend(owner, data, 300_000, signer);
   }
 
-  /** Cancel an order by ID. */
-  async cancelOrder(orderId: number): Promise<boolean> {
-    const result = (await this.provider.request('mersennet_orders_cancelOrder', [
-      '0x' + orderId.toString(16),
-    ])) as boolean;
-    return result;
+  /** Cancel an order by ID (signed; the chain enforces order ownership). */
+  async cancelOrder(
+    owner: string,
+    orderId: number,
+    signer: TxSigner
+  ): Promise<SubmitResult> {
+    const data = encodeCancelOrder(BigInt(orderId));
+    return this.signAndSend(owner, data, 200_000, signer);
   }
 
   /** Get order book for a market. */
@@ -148,27 +178,24 @@ export class MersennetOrders {
     return parseOrders(result);
   }
 
-  /** Deposit collateral (RPC). */
-  async depositCollateral(owner: string, amount: string): Promise<boolean> {
-    const result = (await this.provider.request('mersennet_orders_depositCollateral', [
-      owner,
-      toHexAmount(amount),
-    ])) as boolean;
-    return result;
+  /** Deposit collateral (signed tx; escrows the signer's native MRSN). */
+  async depositCollateral(
+    owner: string,
+    amount: string,
+    signer: TxSigner
+  ): Promise<SubmitResult> {
+    const data = encodeDepositCollateral(BigInt(amount));
+    return this.signAndSend(owner, data, 200_000, signer);
   }
 
-  /**
-   * Withdraw collateral. Sends a transaction to the precompile.
-   * Requires the RPC to have the owner account unlocked, or use a wallet to sign.
-   */
-  async withdrawCollateral(owner: string, amount: string): Promise<boolean> {
+  /** Withdraw collateral (signed tx; the chain validates margin first). */
+  async withdrawCollateral(
+    owner: string,
+    amount: string,
+    signer: TxSigner
+  ): Promise<SubmitResult> {
     const data = encodeWithdrawCollateral(BigInt(amount));
-    await this.provider.sendTransaction({
-      from: owner,
-      to: MersennetPrecompile.ADDRESS,
-      data,
-    });
-    return true;
+    return this.signAndSend(owner, data, 200_000, signer);
   }
 
   /**
@@ -227,9 +254,9 @@ export class MersennetOrders {
   }
 
   /**
-   * Submit multiple orders in sequence.
+   * Submit multiple orders in sequence (each a signed tx).
    */
-  async submitBatchOrder(params: BatchOrderParams): Promise<void> {
+  async submitBatchOrder(params: BatchOrderParams, signer: TxSigner): Promise<void> {
     for (const o of params.orders) {
       await this.submitOrder(
         params.owner,
@@ -237,7 +264,8 @@ export class MersennetOrders {
         o.side,
         o.price,
         o.size,
-        o.tif ?? 'gtc'
+        o.tif ?? 'gtc',
+        signer
       );
     }
   }
