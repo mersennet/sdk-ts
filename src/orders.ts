@@ -223,7 +223,33 @@ export class MersennetOrders {
     return parseOrders(result);
   }
 
-  /** Deposit collateral (signed tx; escrows the signer's native MRSN). */
+  /**
+   * Collateral units per MRSN in the current era: 10^18 before the settlement
+   * switch (a unit was one wei) and 1 from it (a unit is one MRSN). Read from
+   * `getProtocol().weiPerCollateralUnit`, so callers can pass MRSN amounts
+   * through `toCollateralUnits` and never depend on the switch height.
+   */
+  async collateralUnitsPerMrsn(): Promise<bigint> {
+    const p = await this.getProtocol();
+    let wei = 1n;
+    try { wei = BigInt(p.weiPerCollateralUnit ?? 1); } catch { wei = 1n; }
+    return 10n ** 18n / (wei > 0n ? wei : 1n);
+  }
+
+  /** Human MRSN amount (e.g. "10.5") → integer collateral units for the current era (floor). */
+  async toCollateralUnits(mrsn: string | number): Promise<bigint> {
+    const s = String(mrsn).trim();
+    if (!/^\d+(\.\d+)?$/.test(s)) throw new Error(`invalid MRSN amount: ${mrsn}`);
+    const [int, frac = ''] = s.split('.');
+    const wei = BigInt(int) * 10n ** 18n + BigInt((frac + '0'.repeat(18)).slice(0, 18));
+    return wei / (10n ** 18n / (await this.collateralUnitsPerMrsn()));
+  }
+
+  /**
+   * Deposit collateral (signed tx; escrows the signer's native MRSN).
+   * `amount` is in collateral units — use `toCollateralUnits("100")` to
+   * deposit 100 MRSN in any era.
+   */
   async depositCollateral(
     owner: string,
     amount: string,
