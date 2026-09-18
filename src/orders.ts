@@ -9,6 +9,9 @@ import {
   encodePlaceOrder,
   encodeCancelOrder,
   encodeDepositCollateral,
+  encodeSetAgent,
+  encodeRevokeAgent,
+  encodeLiquidate,
 } from './precompile';
 import type { MersennetProvider } from './provider';
 import type {
@@ -40,6 +43,48 @@ export interface TxRequest {
 export type TxSigner = (tx: TxRequest) => Promise<string>;
 
 /** Result of a signed order/collateral submission. */
+/** A listed market as reported by `mersennet_orders_getMarkets`. */
+export interface Market {
+  id: number;
+  symbol: string;
+  /** Chain units (decimal string). */
+  tickSize: string;
+  lotSize: string;
+  lastPrice: string;
+  /** On-chain price = human price × priceScale (1 = integer prices). */
+  priceScale: number;
+  status: string;
+}
+
+/** `mersennet_orders_getProtocol`. */
+export interface ClobProtocol {
+  height: number;
+  switches: { agentDelegationHeight: number; frameCallerHeight: number; priceScaleHeight: number; settlementHeight: number };
+  agentDelegationActive: boolean;
+  frameCallerActive: boolean;
+  settlementActive: boolean;
+  /** Hex: wei moved per collateral unit (1 before the settlement switch, 1e18 after). */
+  weiPerCollateralUnit: string;
+  initialMarginBps: number;
+  maintenanceMarginBps: number;
+  settlementInitialMarginBps: number;
+  settlementMaintenanceMarginBps: number;
+  insuranceFund: string;
+  badDebt: string;
+  markets: Array<{ id: number; symbol: string; priceScale: number }>;
+}
+
+/** `mersennet_orders_getAgents`. */
+export interface AgentsView {
+  owner: string;
+  agentDelegationHeight: number;
+  active: boolean;
+  frameCallerHeight: number;
+  frameCallerActive: boolean;
+  height: number;
+  agents: Array<{ agent: string; expiresAtBlock: number; expired: boolean }>;
+}
+
 export interface SubmitResult {
   accepted: boolean;
   txHash: string;
@@ -251,6 +296,76 @@ export class MersennetOrders {
       owner,
     ])) as boolean;
     return result;
+  }
+
+  // ------------------------------------------------------------------
+  // Protocol parameters, markets and price scale
+  // ------------------------------------------------------------------
+
+  /**
+   * Every CLOB consensus switch and live parameter: margin bps, wei per
+   * collateral unit, insurance fund, bad debt, each market's priceScale.
+   */
+  async getProtocol(): Promise<ClobProtocol> {
+    return (await this.provider.request('mersennet_orders_getProtocol', [])) as ClobProtocol;
+  }
+
+  /** Listed markets with tick/lot sizes and `priceScale` (on-chain price = human × priceScale). */
+  async getMarkets(): Promise<Market[]> {
+    const raw = (await this.provider.request('mersennet_orders_getMarkets', [])) as Array<Record<string, unknown>>;
+    return (raw || []).map((m) => ({
+      id: Number(m.id),
+      symbol: String(m.symbol),
+      tickSize: BigInt(String(m.tickSize ?? '0x1')).toString(),
+      lotSize: BigInt(String(m.lotSize ?? '0x1')).toString(),
+      lastPrice: BigInt(String(m.lastPrice ?? '0x0')).toString(),
+      priceScale: Number(m.priceScale ?? 1),
+      status: String(m.status ?? 'active'),
+    }));
+  }
+
+  /** Human price → on-chain price for `market` (rounds to the nearest unit). */
+  static toChainPrice(human: number | string, market: Pick<Market, 'priceScale'>): bigint {
+    return BigInt(Math.round(Number(human) * (market.priceScale || 1)));
+  }
+
+  /** On-chain price → human price for `market`. */
+  static toHumanPrice(chain: bigint | string, market: Pick<Market, 'priceScale'>): number {
+    return Number(BigInt(chain)) / (market.priceScale || 1);
+  }
+
+  // ------------------------------------------------------------------
+  // Agent delegation (one-click trading keys)
+  // ------------------------------------------------------------------
+
+  /** Grants issued by `owner`, plus whether delegation is active on the network. */
+  async getAgents(owner: string): Promise<AgentsView> {
+    return (await this.provider.request('mersennet_orders_getAgents', [owner])) as AgentsView;
+  }
+
+  /** Let `agent` trade for `owner` until `expiresAtBlock` (0 = no expiry). Signed by the owner. */
+  async setAgent(owner: string, agent: string, expiresAtBlock: number, signer: TxSigner): Promise<SubmitResult> {
+    return this.signAndSend(owner, encodeSetAgent(agent, expiresAtBlock), 150_000, signer);
+  }
+
+  /** Revoke an agent. Signed by the owner that granted it. */
+  async revokeAgent(owner: string, agent: string, signer: TxSigner): Promise<SubmitResult> {
+    return this.signAndSend(owner, encodeRevokeAgent(agent), 150_000, signer);
+  }
+
+  // ------------------------------------------------------------------
+  // Liquidations (keeper)
+  // ------------------------------------------------------------------
+
+  /** Accounts below maintenance margin at the head (empty before the settlement switch). */
+  async getLiquidatable(): Promise<string[]> {
+    const r = (await this.provider.request('mersennet_orders_getLiquidatable', [])) as { accounts?: string[] };
+    return r?.accounts ?? [];
+  }
+
+  /** Liquidate `account` (anyone may call; the keeper earns half of the 1% fee into its collateral). */
+  async liquidate(keeper: string, account: string, signer: TxSigner): Promise<SubmitResult> {
+    return this.signAndSend(keeper, encodeLiquidate(account), 600_000, signer);
   }
 
   /**

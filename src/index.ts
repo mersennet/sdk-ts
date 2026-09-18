@@ -18,6 +18,7 @@
 
 export { MersennetProvider } from './provider';
 export { MersennetOrders } from './orders';
+export type { Market, ClobProtocol, AgentsView, SubmitResult, TxRequest, TxSigner } from './orders';
 export { MersennetSubscription } from './subscription';
 export {
   MersennetPrecompile,
@@ -31,6 +32,10 @@ export {
   encodeGetCollateral,
   encodeIsLiquidatable,
   encodeGetBestBidAsk,
+  encodeSetAgent,
+  encodeRevokeAgent,
+  encodeAgentOf,
+  encodeLiquidate,
 } from './precompile';
 
 export type {
