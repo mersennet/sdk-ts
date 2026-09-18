@@ -91,9 +91,13 @@ export class MersennetProvider {
   }
 
   /** eth_getTransactionCount / mersennet_getTransactionCount */
-  async getTransactionCount(address: string): Promise<number> {
+  async getTransactionCount(
+    address: string,
+    block: 'latest' | 'pending' = 'latest'
+  ): Promise<number> {
     const result = (await this.request('eth_getTransactionCount', [
       address,
+      block,
     ])) as string;
     return hexToNumber(result);
   }
@@ -182,10 +186,22 @@ export class MersennetProvider {
     return hexToNumber(result);
   }
 
-  /** eth_sendTransaction / mersennet_sendTransaction */
-  async sendTransaction(tx: TransactionParams): Promise<string> {
-    const result = (await this.request('eth_sendTransaction', [tx])) as string;
-    return result;
+  /**
+   * eth_sendTransaction is disabled on public nodes (it would execute with a
+   * caller-supplied `from` / node-held key — account takeover). Sign locally
+   * and use {@link sendRawTransaction} instead.
+   * @deprecated Sign the transaction and call sendRawTransaction.
+   */
+  async sendTransaction(_tx: TransactionParams): Promise<string> {
+    throw new Error(
+      'eth_sendTransaction is disabled; sign the transaction locally and call sendRawTransaction(rawHex)'
+    );
+  }
+
+  /** eth_sendRawTransaction — submit a locally-signed transaction. */
+  async sendRawTransaction(rawHex: string): Promise<string> {
+    const raw = rawHex.startsWith('0x') ? rawHex : '0x' + rawHex;
+    return (await this.request('eth_sendRawTransaction', [raw])) as string;
   }
 
   /** eth_chainId / mersennetId */

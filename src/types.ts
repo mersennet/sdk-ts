@@ -7,12 +7,12 @@
 export interface Block {
   number: string;
   hash: string;
-  gas_limit: string;
-  gas_used: string;
-  base_fee: string;
-  state_root: string;
+  gasLimit: string;
+  gasUsed: string;
+  baseFeePerGas: string;
+  stateRoot: string;
   transactions: string[] | Transaction[];
-  domain_events?: unknown[];
+  domainEvents?: unknown[];
 }
 
 /** Transaction data */
@@ -23,19 +23,19 @@ export interface Transaction {
   value: string;
   nonce: string;
   gas: string;
-  gas_price: string;
+  gasPrice: string;
   input: string;
 }
 
 /** Transaction receipt */
 export interface Receipt {
-  transaction_hash: string;
-  block_hash: string;
-  block_number: string;
-  transaction_index: string;
-  gas_used: string;
+  transactionHash: string;
+  blockHash: string;
+  blockNumber: string;
+  transactionIndex: string;
+  gasUsed: string;
   status: string;
-  contract_address: string | null;
+  contractAddress: string | null;
   output: string;
   logs: LogEntry[];
 }
@@ -45,11 +45,11 @@ export interface LogEntry {
   address: string;
   topics: string[];
   data: string;
-  block_number: string;
-  block_hash: string;
-  transaction_hash: string;
-  transaction_index: string;
-  log_index: string;
+  blockNumber: string;
+  blockHash: string;
+  transactionHash: string;
+  transactionIndex: string;
+  logIndex: string;
 }
 
 /** Parameters for eth_call / eth_estimateGas */

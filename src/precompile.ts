@@ -20,6 +20,12 @@ export const SELECTORS: Record<string, string> = {
   getCollateral: '0x5c1548fb',
   isLiquidatable: '0x042e02cf',
   getBestBidAsk: '0x8ee0a7fa',
+  // Agent delegation (from the agent-delegation switch height)
+  setAgent: '0xb845309c',
+  revokeAgent: '0x7da6ac0d',
+  agentOf: '0xac3c0e30',
+  // Keeper liquidation (from the settlement switch height)
+  liquidate: '0x2f865568',
 };
 
 /** Pad a hex string to 32 bytes (64 hex chars), left-padded with zeros */
@@ -132,6 +138,33 @@ export function encodeIsLiquidatable(account: string): string {
   const sel = SELECTORS.isLiquidatable;
   const args = encodeAddress(account);
   return sel + args;
+}
+
+/**
+ * Encode setAgent call — let `agent` place and cancel orders for the caller
+ * (never deposit/withdraw). `expiresAtBlock` 0 = no expiry (max ~90 days).
+ * setAgent(address agent, uint64 expiresAtBlock)
+ */
+export function encodeSetAgent(agent: string, expiresAtBlock: number): string {
+  return SELECTORS.setAgent + encodeAddress(agent) + encodeU64(expiresAtBlock);
+}
+
+/** Encode revokeAgent(address agent). */
+export function encodeRevokeAgent(agent: string): string {
+  return SELECTORS.revokeAgent + encodeAddress(agent);
+}
+
+/** Encode agentOf(address agent) → (address owner, uint64 expiresAtBlock). */
+export function encodeAgentOf(agent: string): string {
+  return SELECTORS.agentOf + encodeAddress(agent);
+}
+
+/**
+ * Encode liquidate(address account) — keeper call: closes an account below
+ * maintenance margin on the book; the caller earns half of the 1% fee.
+ */
+export function encodeLiquidate(account: string): string {
+  return SELECTORS.liquidate + encodeAddress(account);
 }
 
 /**

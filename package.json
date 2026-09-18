@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "pnpm build && node --test tests/"
+    "test": "pnpm build && node --test tests/*.test.js"
   },
   "dependencies": {},
   "devDependencies": {

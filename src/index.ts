@@ -18,6 +18,7 @@
 
 export { MersennetProvider } from './provider';
 export { MersennetOrders } from './orders';
+export type { Market, ClobProtocol, AgentsView, SubmitResult, TxRequest, TxSigner } from './orders';
 export { MersennetSubscription } from './subscription';
 export {
   MersennetPrecompile,
@@ -31,6 +32,10 @@ export {
   encodeGetCollateral,
   encodeIsLiquidatable,
   encodeGetBestBidAsk,
+  encodeSetAgent,
+  encodeRevokeAgent,
+  encodeAgentOf,
+  encodeLiquidate,
 } from './precompile';
 
 export type {
@@ -118,6 +123,21 @@ export type {
   ReconstructedPosition,
   ReconstructTradingOptions,
 } from './positions';
+
+// Compliance / view-key attestation (selective disclosure, ADR-019).
+export {
+  buildPortfolioAttestation,
+  verifyAttestation,
+  computePortfolioDigest,
+  ATTESTATION_VERSION,
+} from './attestation';
+export type {
+  ComplianceAttestation,
+  BuildAttestationOptions,
+  AttestationSigner,
+  AttestationVerifier,
+  VerifyResult,
+} from './attestation';
 
 // Privacy-fork migration UX helpers (Workstream F4).
 export {

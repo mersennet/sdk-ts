@@ -143,7 +143,7 @@ export interface GrantedNoteScanResult {
  * import { MersennetProvider } from '@mersennet/sdk';
  * import { ShieldedClient, ViewingKey } from '@mersennet/sdk/shielded';
  *
- * const provider = new MersennetProvider('https://rpc.mersennetchain.xyz');
+ * const provider = new MersennetProvider('https://rpc.mersennet.com');
  * const vk = ViewingKeyHelpers.fromSeed('my recovery phrase');
  * const client = new ShieldedClient({ provider, viewingKey: vk });
  *
