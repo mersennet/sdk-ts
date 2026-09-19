@@ -1,0 +1,26 @@
+name: Publish to npm
+# Runs on every GitHub release. Publishes only when the NPM_TOKEN secret exists
+# (automation token for the @mersennet npm org); otherwise it is a no-op.
+on:
+  release: { types: [published] }
+  workflow_dispatch:
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    env: { HAS_TOKEN: "${{ secrets.NPM_TOKEN != '' }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
+      - run: npm ci
+      - run: node --test tests/*.test.js
+      - name: Version must match the tag
+        if: github.event_name == 'release'
+        run: test "v$(node -p "require('./package.json').version")" = "${{ github.event.release.tag_name }}"
+      - name: Publish
+        if: env.HAS_TOKEN == 'true'
+        run: npm publish --access public --provenance
+        env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
+      - if: env.HAS_TOKEN != 'true'
+        run: echo "NPM_TOKEN not set — skipping publish (package built and tested)."

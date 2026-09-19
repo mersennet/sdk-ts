@@ -19,9 +19,11 @@
 ## Install
 
 ```bash
-# from GitHub (npm publication as @mersennet/sdk is pending)
-npm install github:mersennet/sdk-ts
+npm install github:mersennet/sdk-ts#semver:^0.1   # latest 0.1.x release tag
 ```
+
+Publication to npm as `@mersennet/sdk` is pending; the GitHub install builds the
+package on install (Node ≥ 20).
 
 ## Quick start
 
