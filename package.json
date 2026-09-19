@@ -1,17 +1,56 @@
 {
   "name": "@mersennet/sdk",
   "version": "0.1.0",
-  "description": "TypeScript SDK for Mersennet",
+  "description": "TypeScript SDK for Mersennet: JSON-RPC, the on-chain order book (MersennetOrders precompile), agent keys, liquidations, shielded notes and viewing keys",
+  "license": "MIT",
+  "author": "Mersennet Foundation <dev@mersennet.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mersennet/sdk-ts.git"
+  },
+  "homepage": "https://docs.mersennet.com/developers/sdks/javascript/",
+  "bugs": {
+    "url": "https://github.com/mersennet/sdk-ts/issues"
+  },
+  "keywords": [
+    "mersennet",
+    "blockchain",
+    "evm",
+    "order-book",
+    "perpetuals",
+    "zk",
+    "json-rpc",
+    "sdk"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc",
-    "test": "pnpm build && node --test tests/*.test.js"
+    "prepare": "npm run build",
+    "test": "npm run build && node --test tests/*.test.js"
   },
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^24.10.1",
     "typescript": "^5.0.0"
-  },
-  "license": "MIT"
+  }
 }
