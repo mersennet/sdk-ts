@@ -44,3 +44,7 @@ node --test tests/*.test.js
 ```
 
 Docs: [docs.mersennet.com/developers/sdks/javascript](https://docs.mersennet.com/developers/sdks/javascript)
+
+## License
+
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Mersennet Foundation. Security reports: security@mersennet.com ([SECURITY.md](SECURITY.md)).
