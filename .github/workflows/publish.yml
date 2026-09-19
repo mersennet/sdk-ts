@@ -4,6 +4,9 @@ name: Publish to npm
 on:
   release: { types: [published] }
   workflow_dispatch:
+permissions:
+  contents: read
+
 jobs:
   npm:
     runs-on: ubuntu-latest
