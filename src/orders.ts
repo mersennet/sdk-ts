@@ -288,7 +288,9 @@ export class MersennetOrders {
     const sizeHex = hex.slice(0, 64);
     const entryPriceHex = hex.slice(64, 128);
 
-    const size = BigInt('0x' + sizeHex);
+    // `size` is an int128 (two's complement in a 32-byte word): shorts are negative.
+    let size = BigInt('0x' + sizeHex);
+    if (size >= 1n << 255n) size -= 1n << 256n;
     const entryPrice = BigInt('0x' + entryPriceHex);
 
     return {
