@@ -1,6 +1,7 @@
 <p align="center"><a href="https://mersennet.com"><img src="https://raw.githubusercontent.com/mersennet/.github/main/profile/mark.svg" width="72" alt="Mersennet"></a></p>
 <h1 align="center">Mersennet TypeScript SDK</h1>
 <p align="center">
+  <a href="https://www.npmjs.com/package/@mersennet/sdk"><img src="https://img.shields.io/npm/v/@mersennet/sdk?style=flat-square&color=7dff9b&label=npm" alt="npm"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7dff9b?style=flat-square" alt="MIT license"></a>
   <a href="https://github.com/mersennet/sdk-ts/actions/workflows/ci.yml"><img src="https://github.com/mersennet/sdk-ts/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://docs.mersennet.com/developers/sdks/javascript/"><img src="https://img.shields.io/badge/docs-mersennet-1c1c1c?style=flat-square" alt="Docs"></a>
@@ -19,11 +20,13 @@
 ## Install
 
 ```bash
-npm install github:mersennet/sdk-ts#semver:^0.1   # latest 0.1.x release tag
+npm install @mersennet/sdk
 ```
 
-Publication to npm as `@mersennet/sdk` is pending; the GitHub install builds the
-package on install (Node ≥ 20).
+Every GitHub release is published to npm as [`@mersennet/sdk`](https://www.npmjs.com/package/@mersennet/sdk)
+with a provenance statement (`npm audit signatures` checks the tarball against the
+tagged source). Installing straight from a tag also works:
+`npm install github:mersennet/sdk-ts#semver:^0.1` (builds on install, Node ≥ 20).
 
 ## Quick start
 
