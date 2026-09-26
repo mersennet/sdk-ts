@@ -1,6 +1,11 @@
 name: Publish to npm
-# Runs on every GitHub release. Publishes only when the NPM_TOKEN secret exists
-# (automation token for the @mersennet npm org); otherwise it is a no-op.
+# Runs on every GitHub release. Two ways to authenticate, in order of preference:
+#   1. npm trusted publishing (OIDC): once the package's Trusted Publisher on
+#      npmjs.com points at this repository + workflow, set the repository
+#      variable NPM_TRUSTED=1 and delete the NPM_TOKEN secret — no credential
+#      exists anywhere, and npm signs the provenance from the workflow identity.
+#   2. NPM_TOKEN secret (granular token, bypass-2FA) — the fallback until then;
+#      npm removes direct publishing with such tokens in January 2027.
 on:
   release: { types: [published] }
   workflow_dispatch:
@@ -11,19 +16,26 @@ jobs:
   npm:
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
-    env: { HAS_TOKEN: "${{ secrets.NPM_TOKEN != '' }}" }
+    env:
+      HAS_TOKEN: "${{ secrets.NPM_TOKEN != '' }}"
+      TRUSTED: "${{ vars.NPM_TRUSTED == '1' }}"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
+      # Trusted publishing needs npm >= 11.5.1 (Node 22 bundles 10.x).
+      - run: npm install -g npm@latest && npm --version
       - run: npm ci
       - run: node --test tests/*.test.js
       - name: Version must match the tag
         if: github.event_name == 'release'
         run: test "v$(node -p "require('./package.json').version")" = "${{ github.event.release.tag_name }}"
-      - name: Publish
-        if: env.HAS_TOKEN == 'true'
+      - name: Publish (trusted publishing, no token)
+        if: env.TRUSTED == 'true'
+        run: npm publish --access public --provenance
+      - name: Publish (NPM_TOKEN)
+        if: env.TRUSTED != 'true' && env.HAS_TOKEN == 'true'
         run: npm publish --access public --provenance
         env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
-      - if: env.HAS_TOKEN != 'true'
-        run: echo "NPM_TOKEN not set — skipping publish (package built and tested)."
+      - if: env.TRUSTED != 'true' && env.HAS_TOKEN != 'true'
+        run: echo "Neither NPM_TRUSTED=1 nor NPM_TOKEN is set — skipping publish (package built and tested)."
