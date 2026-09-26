@@ -1,6 +1,6 @@
 {
   "name": "@mersennet/sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "TypeScript SDK for Mersennet: JSON-RPC, the on-chain order book (MersennetOrders precompile), agent keys, liquidations, shielded notes and viewing keys",
   "license": "MIT",
   "author": "Mersennet Foundation <dev@mersennet.com>",
