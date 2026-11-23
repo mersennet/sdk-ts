@@ -29,6 +29,23 @@ function hexToString(hex: string): string {
 }
 
 /**
+ * A JSON-RPC error answered by the node. `code` and `data` are the node's
+ * `error.code` / `error.data`: a reverted `eth_call` / `eth_estimateGas` is
+ * code 3 with the revert bytes (hex) in `data`, as on geth.
+ */
+export class MersennetRpcError extends Error {
+  readonly code: number;
+  readonly data?: unknown;
+
+  constructor(code: number, message: string, data?: unknown) {
+    super(`RPC error ${code}: ${message}`);
+    this.name = 'MersennetRpcError';
+    this.code = code;
+    this.data = data;
+  }
+}
+
+/**
  * Mersennet JSON-RPC provider.
  * Connects to the RPC endpoint via HTTP.
  */
@@ -72,7 +89,7 @@ export class MersennetProvider {
 
     if (json.error) {
       const err = json.error;
-      throw new Error(`RPC error ${err.code}: ${err.message}`);
+      throw new MersennetRpcError(err.code, err.message, err.data);
     }
 
     return json.result;
@@ -174,13 +191,17 @@ export class MersennetProvider {
     return result;
   }
 
-  /** eth_call / mersennet_call */
+  /**
+   * eth_call. A reverted call throws {@link MersennetRpcError} with code 3
+   * and the revert bytes in `data` (nodes before the eth_call-errors release
+   * returned the revert bytes as the result instead).
+   */
   async call(tx: CallParams): Promise<string> {
     const result = (await this.request('eth_call', [tx])) as string;
     return result || '0x';
   }
 
-  /** eth_estimateGas */
+  /** eth_estimateGas. A call that would revert throws {@link MersennetRpcError} (code 3). */
   async estimateGas(tx: CallParams): Promise<number> {
     const result = (await this.request('eth_estimateGas', [tx])) as string;
     return hexToNumber(result);

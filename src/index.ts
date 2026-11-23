@@ -16,7 +16,7 @@
  * ```
  */
 
-export { MersennetProvider } from './provider';
+export { MersennetProvider, MersennetRpcError } from './provider';
 export { MersennetOrders } from './orders';
 export type { Market, ClobProtocol, AgentsView, SubmitResult, TxRequest, TxSigner } from './orders';
 export { MersennetSubscription } from './subscription';
